@@ -6,7 +6,22 @@ export interface PhotosynthesisPoint {
   o2Rate: number; // Oxygen production rate in ppm/min
 }
 
+// Generate 30 seconds of historical seed data representing photosynthesis starting at ambient CO2 (400ppm)
+const generateInitialHistory = (): PhotosynthesisPoint[] => {
+  const points: PhotosynthesisPoint[] = [];
+  for (let i = 0; i < 30; i++) {
+    points.push({
+      time: i,
+      co2: 400.0,
+      o2Rate: 20.0
+    });
+  }
+  return points;
+};
+
 export const usePhotosynthesisTelemetry = () => {
+  const initialHistory = generateInitialHistory();
+
   // Refs for tracking mutable values in simulation interval
   const lightRef = useRef<number>(50.0); // light intensity 0-100%
   const co2Ref = useRef<number>(400.0);  // CO2 concentration in ppm
@@ -17,12 +32,10 @@ export const usePhotosynthesisTelemetry = () => {
   const [co2, _setCo2] = useState<number>(400.0);
   const [o2Rate, setO2Rate] = useState<number>(20.0); // O2 production rate in ppm/min
   const [fanStatus, _setFanStatus] = useState<boolean>(false);
-  const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const [history, setHistory] = useState<PhotosynthesisPoint[]>([
-    { time: 0, co2: 400.0, o2Rate: 20.0 }
-  ]);
+  const [elapsedTime, setElapsedTime] = useState<number>(30);
+  const [history, setHistory] = useState<PhotosynthesisPoint[]>(initialHistory);
 
-  // Setters sync refs
+  // Sync state & ref setters
   const setLightState = (val: number) => {
     lightRef.current = val;
     _setLight(val);
@@ -105,8 +118,8 @@ export const usePhotosynthesisTelemetry = () => {
     setCo2State(400.0);
     setO2Rate(30.0);
     setFanStatusState(false);
-    setElapsedTime(0);
-    setHistory([{ time: 0, co2: 400.0, o2Rate: 30.0 }]);
+    setElapsedTime(30);
+    setHistory(generateInitialHistory());
   };
 
   return {

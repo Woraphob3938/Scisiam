@@ -6,21 +6,39 @@ export interface TelemetryPoint {
   ambientTemp: number; // ambient temp in Celsius
 }
 
+// Generate 30 seconds of historical seed data representing water cooling from 95C to ~69.6C
+const generateInitialHistory = (envTemp: number): TelemetryPoint[] => {
+  const points: TelemetryPoint[] = [];
+  const startTemp = 95.0;
+  const k = 0.015;
+  for (let i = 0; i < 30; i++) {
+    const temp = envTemp + (startTemp - envTemp) * Math.exp(-k * i);
+    points.push({
+      time: i,
+      temp: Math.round(temp * 10) / 10,
+      ambientTemp: envTemp
+    });
+  }
+  return points;
+};
+
 export const useLabTelemetry = () => {
-  // Refs for tracking mutable values in simulation interval (prevents clearing the interval)
-  const waterTempRef = useRef<number>(85.0);
+  const ambient = 25.0;
+  const initialHistory = generateInitialHistory(ambient);
+  const currentInitialTemp = initialHistory[initialHistory.length - 1].temp; // ~69.6°C
+
+  // Refs for tracking mutable values in simulation interval
+  const waterTempRef = useRef<number>(currentInitialTemp);
   const heatingStatusRef = useRef<boolean>(false);
   const targetTempRef = useRef<number>(30.0);
 
   // Telemetry States (synchronized with refs)
-  const [waterTemp, _setWaterTemp] = useState<number>(85.0);
-  const [ambientTemp] = useState<number>(25.0);
-  const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [waterTemp, _setWaterTemp] = useState<number>(currentInitialTemp);
+  const [ambientTemp] = useState<number>(ambient);
+  const [elapsedTime, setElapsedTime] = useState<number>(30);
   const [targetTemp, _setTargetTemp] = useState<number>(30.0);
   const [heatingStatus, _setHeatingStatus] = useState<boolean>(false);
-  const [history, setHistory] = useState<TelemetryPoint[]>([
-    { time: 0, temp: 85.0, ambientTemp: 25.0 }
-  ]);
+  const [history, setHistory] = useState<TelemetryPoint[]>(initialHistory);
 
   // Sync state & ref setters
   const setWaterTempState = (val: number) => {
@@ -45,7 +63,6 @@ export const useLabTelemetry = () => {
   // Physics Simulation Engine (runs offline)
   useEffect(() => {
     const interval = setInterval(() => {
-      // Safely access current telemetry parameter refs (no interval teardowns)
       const currentTemp = waterTempRef.current;
       const currentHeating = heatingStatusRef.current;
       const currentTarget = targetTempRef.current;
@@ -61,7 +78,6 @@ export const useLabTelemetry = () => {
         }
       } else {
         // Newton's law of cooling: dT/dt = -k * (T - T_env)
-        // Integration: T_next = T_env + (T_prev - T_env) * exp(-k * dt)
         nextTemp = ambientTemp + (currentTemp - ambientTemp) * Math.exp(-coolingConstant * 1);
       }
 
@@ -98,10 +114,12 @@ export const useLabTelemetry = () => {
   };
 
   const resetLab = () => {
-    setWaterTempState(85.0);
-    setElapsedTime(0);
+    const freshHistory = generateInitialHistory(ambientTemp);
+    const freshTemp = freshHistory[freshHistory.length - 1].temp;
+    setWaterTempState(freshTemp);
+    setElapsedTime(30);
     setHeatingStatusState(false);
-    setHistory([{ time: 0, temp: 85.0, ambientTemp }]);
+    setHistory(freshHistory);
   };
 
   return {
