@@ -125,7 +125,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
           <View style={[styles.recDot, cooling.heatingStatus && styles.recDotActive]} />
           <Text textBreakStrategy="simple" style={styles.recText}>🟢 SIMULATION ACTIVE</Text>
         </View>
-        <Text style={styles.cameraOverlayText}>CAM 01 | COOLING_RIG | FPS: 30</Text>
+        <Text style={styles.cameraOverlayText}>SYSTEM HUD | COOLING SIMULATOR | ACTIVE</Text>
         <Text style={styles.timeOverlayText}>TIME: {formatTime(cooling.elapsedTime)}</Text>
 
         <Svg width="100%" height={200} viewBox="0 0 300 160">
@@ -228,8 +228,8 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
   const renderPhysicsControls = () => {
     return (
       <View style={styles.controlPanel}>
-        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมการทดลอง (Control Panel)</Text>
-        <Text textBreakStrategy="simple" style={styles.controlSub}>สั่งการฮีตเตอร์ต้มน้ำระยะไกล (IoT Remote)</Text>
+        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมการจำลอง (Simulation Panel)</Text>
+        <Text textBreakStrategy="simple" style={styles.controlSub}>ควบคุมฮีตเตอร์จำลองอุณหภูมิ (Heater Controller)</Text>
         <View style={styles.inputRow}>
           <View style={styles.inputWrapper}>
             <TextInput
@@ -247,7 +247,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
             {cooling.heatingStatus ? (
               <ActivityIndicator color={colors.white} size="small" />
             ) : (
-              <Text textBreakStrategy="simple" style={styles.commandBtnText}>ยืนยันส่งคำสั่ง</Text>
+              <Text textBreakStrategy="simple" style={styles.commandBtnText}>สั่งทำความร้อน</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -272,7 +272,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
           <View style={[styles.recDot, titration.isAutoDripping && styles.recDotActive]} />
           <Text textBreakStrategy="simple" style={styles.recText}>🟢 SIMULATION ACTIVE</Text>
         </View>
-        <Text style={styles.cameraOverlayText}>CAM 02 | TITRATION_RIG | FPS: 30</Text>
+        <Text style={styles.cameraOverlayText}>SYSTEM HUD | TITRATION SIMULATOR | ACTIVE</Text>
         <Text style={styles.timeOverlayText}>VOLUME: {titration.acidVol.toFixed(1)} mL</Text>
 
         <Svg width="100%" height={200} viewBox="0 0 300 160">
@@ -365,8 +365,8 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
   const renderChemistryControls = () => {
     return (
       <View style={styles.controlPanel}>
-        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมการหยดกรด (Titration Controller)</Text>
-        <Text textBreakStrategy="simple" style={styles.controlSub}>สั่งสั่งการบิวเรตต์อิเล็กทรอนิกส์ระยะไกล (Burette IoT)</Text>
+        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมการจำลองไทเทรต (Titration Panel)</Text>
+        <Text textBreakStrategy="simple" style={styles.controlSub}>ควบคุมบิวเรตต์จำลองการหยดกรด (Burette Controller)</Text>
         
         <View style={styles.inputRow}>
           <TouchableOpacity style={[styles.commandBtn, { flex: 1, marginRight: spacing.md }]} onPress={() => titration.addAcidDrop(0.5)}>
@@ -405,7 +405,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
           <View style={[styles.recDot, biology.light > 0 && styles.recDotActive]} />
           <Text textBreakStrategy="simple" style={styles.recText}>🟢 SIMULATION ACTIVE</Text>
         </View>
-        <Text style={styles.cameraOverlayText}>CAM 03 | CHAMBER_BIO | FPS: 30</Text>
+        <Text style={styles.cameraOverlayText}>SYSTEM HUD | PHOTOSYNTHESIS SIMULATOR | ACTIVE</Text>
         <Text style={styles.timeOverlayText}>CO2 LEVEL: {biology.co2.toFixed(1)} ppm</Text>
 
         <Svg width="100%" height={200} viewBox="0 0 300 160">
@@ -514,8 +514,8 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
     const currentLightStr = biology.light.toFixed(0);
     return (
       <View style={styles.controlPanel}>
-        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมระบบชีวนิเวศ (Bio-Chamber Controls)</Text>
-        <Text textBreakStrategy="simple" style={styles.controlSub}>สั่งปรับความเข้มแสงไฟสังเคราะห์แสง (IoT Light Controller)</Text>
+        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมระบบชีวนิเวศจำลอง (Chamber Controls)</Text>
+        <Text textBreakStrategy="simple" style={styles.controlSub}>ปรับความเข้มแสงไฟสังเคราะห์แสงจำลอง (Light Controller)</Text>
 
         <View style={styles.inputRow}>
           {/* Quick buttons to set light level */}

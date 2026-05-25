@@ -123,7 +123,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
       title: 'Acid-Base Titration Lab',
       subject: 'Chemistry',
       status: 'available',
-      description: 'การทดลองไทเทรตกรด-เบสระยะไกล ควบคุมการหยดของบิวเรตต์อัตโนมัติด้วยคำสั่งดิจิทัลและติดตามค่า pH ในสารละลายแบบ Real-time',
+      description: 'การทดลองจำลองการไทเทรตกรด-เบสเสมือนจริง ควบคุมการหยดของบิวเรตต์อัตโนมัติด้วยคำสั่งดิจิทัลและติดตามค่า pH ในสารละลายแบบ Real-time',
       duration: '25-30 นาที',
       usersActive: 3,
     },
@@ -132,7 +132,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
       title: 'Photosynthesis Rate Chamber',
       subject: 'Biology',
       status: 'available',
-      description: 'วิเคราะห์อัตราการสังเคราะห์แสงของพืชระยะไกล โดยสั่งควบคุมความสว่างหลอดไฟ LED ในกล่องทดลองปิด และตรวจดูความเข้มข้น CO2/O2',
+      description: 'จำลองการวิเคราะห์อัตราการสังเคราะห์แสงของพืช โดยสั่งควบคุมความสว่างหลอดไฟ LED ในกล่องทดลองปิด และตรวจดูความเข้มข้น CO2/O2',
       duration: '45 นาที',
       usersActive: 0,
     },
@@ -290,7 +290,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
               </Text>
               <Text textBreakStrategy="simple" style={styles.modalTitle}>{selectedLab.title}</Text>
 
-              <Text textBreakStrategy="simple" style={styles.modalSectionLabel}>รายละเอียดอุปกรณ์:</Text>
+              <Text textBreakStrategy="simple" style={styles.modalSectionLabel}>รายละเอียดปฏิบัติการ:</Text>
               <Text textBreakStrategy="simple" style={styles.modalDescription}>{selectedLab.description}</Text>
 
               <View style={styles.modalStatsRow}>
