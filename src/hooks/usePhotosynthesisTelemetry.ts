@@ -18,7 +18,6 @@ export const usePhotosynthesisTelemetry = () => {
   const [o2Rate, setO2Rate] = useState<number>(20.0); // O2 production rate in ppm/min
   const [fanStatus, _setFanStatus] = useState<boolean>(false);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const [socketStatus, setSocketStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [history, setHistory] = useState<PhotosynthesisPoint[]>([
     { time: 0, co2: 400.0, o2Rate: 20.0 }
   ]);
@@ -101,10 +100,6 @@ export const usePhotosynthesisTelemetry = () => {
     setFanStatusState(!fanStatusRef.current);
   };
 
-  const toggleSocketConnection = () => {
-    setSocketStatus(prev => prev === 'connected' ? 'disconnected' : 'connected');
-  };
-
   const resetChamber = () => {
     setLightState(50.0);
     setCo2State(400.0);
@@ -120,11 +115,9 @@ export const usePhotosynthesisTelemetry = () => {
     o2Rate,
     fanStatus,
     elapsedTime,
-    socketStatus,
     history,
     changeLight,
     toggleFan,
-    toggleSocketConnection,
     resetChamber,
   };
 };

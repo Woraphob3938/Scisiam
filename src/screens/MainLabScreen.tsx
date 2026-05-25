@@ -123,9 +123,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
       <View style={styles.viewportContainer}>
         <View style={styles.recBadge}>
           <View style={[styles.recDot, cooling.heatingStatus && styles.recDotActive]} />
-          <Text style={styles.recText}>
-            {cooling.socketStatus === 'connected' ? '🔴 LIVE STREAM' : '⏸️ OFFLINE VIEW'}
-          </Text>
+          <Text textBreakStrategy="simple" style={styles.recText}>🟢 SIMULATION ACTIVE</Text>
         </View>
         <Text style={styles.cameraOverlayText}>CAM 01 | COOLING_RIG | FPS: 30</Text>
         <Text style={styles.timeOverlayText}>TIME: {formatTime(cooling.elapsedTime)}</Text>
@@ -255,16 +253,8 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
         </View>
 
         <View style={styles.buttonActionGrid}>
-          <TouchableOpacity style={styles.resetBtn} onPress={cooling.resetLab}>
+          <TouchableOpacity style={[styles.resetBtn, { marginRight: 0 }]} onPress={cooling.resetLab}>
             <Text textBreakStrategy="simple" style={styles.resetBtnText}>🔄 รีเซ็ตแล็บ (Reset)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.connectionToggle, cooling.socketStatus === 'connected' ? styles.connOnline : styles.connOffline]}
-            onPress={cooling.toggleSocketConnection}
-          >
-            <Text textBreakStrategy="simple" style={styles.connToggleText}>
-              {cooling.socketStatus === 'connected' ? '🟢 Socket: Online' : '🔴 Socket: Offline'}
-            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -280,9 +270,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
       <View style={styles.viewportContainer}>
         <View style={styles.recBadge}>
           <View style={[styles.recDot, titration.isAutoDripping && styles.recDotActive]} />
-          <Text style={styles.recText}>
-            {titration.socketStatus === 'connected' ? '🔴 LIVE STREAM' : '⏸️ OFFLINE VIEW'}
-          </Text>
+          <Text textBreakStrategy="simple" style={styles.recText}>🟢 SIMULATION ACTIVE</Text>
         </View>
         <Text style={styles.cameraOverlayText}>CAM 02 | TITRATION_RIG | FPS: 30</Text>
         <Text style={styles.timeOverlayText}>VOLUME: {titration.acidVol.toFixed(1)} mL</Text>
@@ -396,16 +384,8 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
         </View>
 
         <View style={styles.buttonActionGrid}>
-          <TouchableOpacity style={styles.resetBtn} onPress={titration.resetTitration}>
+          <TouchableOpacity style={[styles.resetBtn, { marginRight: 0 }]} onPress={titration.resetTitration}>
             <Text textBreakStrategy="simple" style={styles.resetBtnText}>🔄 รีเซ็ตการทดลอง (Reset)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.connectionToggle, titration.socketStatus === 'connected' ? styles.connOnline : styles.connOffline]}
-            onPress={titration.toggleSocketConnection}
-          >
-            <Text textBreakStrategy="simple" style={styles.connToggleText}>
-              {titration.socketStatus === 'connected' ? '🟢 Socket: Online' : '🔴 Socket: Offline'}
-            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -423,9 +403,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
       <View style={styles.viewportContainer}>
         <View style={styles.recBadge}>
           <View style={[styles.recDot, biology.light > 0 && styles.recDotActive]} />
-          <Text style={styles.recText}>
-            {biology.socketStatus === 'connected' ? '🔴 LIVE STREAM' : '⏸️ OFFLINE VIEW'}
-          </Text>
+          <Text textBreakStrategy="simple" style={styles.recText}>🟢 SIMULATION ACTIVE</Text>
         </View>
         <Text style={styles.cameraOverlayText}>CAM 03 | CHAMBER_BIO | FPS: 30</Text>
         <Text style={styles.timeOverlayText}>CO2 LEVEL: {biology.co2.toFixed(1)} ppm</Text>
@@ -569,19 +547,8 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.resetBtn} onPress={biology.resetChamber}>
+          <TouchableOpacity style={[styles.resetBtn, { marginRight: 0 }]} onPress={biology.resetChamber}>
             <Text textBreakStrategy="simple" style={styles.resetBtnText}>🔄 รีเซ็ตตู้ควบคุม (Reset)</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.buttonActionGrid, { marginTop: spacing.sm }]}>
-          <TouchableOpacity
-            style={[styles.connectionToggle, { flex: 1 }, biology.socketStatus === 'connected' ? styles.connOnline : styles.connOffline]}
-            onPress={biology.toggleSocketConnection}
-          >
-            <Text textBreakStrategy="simple" style={styles.connToggleText}>
-              {biology.socketStatus === 'connected' ? '🟢 Socket: Online' : '🔴 Socket: Offline'}
-            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -742,13 +709,6 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
     return null;
   };
 
-  const selectedSocketStatus = () => {
-    if (labId === 'newton-cooling') return cooling.socketStatus;
-    if (labId === 'acid-base-titration') return titration.socketStatus;
-    if (labId === 'photosynthesis-monitor') return biology.socketStatus;
-    return 'disconnected';
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Top Navbar */}
@@ -761,19 +721,10 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
           {labTitle}
         </Text>
 
-        <View style={[
-          styles.statusBadge,
-          selectedSocketStatus() === 'connected' ? styles.statusOnline : styles.statusOffline
-        ]}>
-          <View style={[
-            styles.statusDot,
-            { backgroundColor: selectedSocketStatus() === 'connected' ? colors.emeraldGlow : colors.dangerGlow }
-          ]} />
-          <Text textBreakStrategy="simple" style={[
-            styles.statusText,
-            { color: selectedSocketStatus() === 'connected' ? colors.emeraldGlow : colors.dangerGlow }
-          ]}>
-            {selectedSocketStatus() === 'connected' ? 'IoT Online' : 'Simulation'}
+        <View style={[styles.statusBadge, styles.statusOnline]}>
+          <View style={[styles.statusDot, { backgroundColor: colors.emeraldGlow }]} />
+          <Text textBreakStrategy="simple" style={[styles.statusText, { color: colors.emeraldGlow }]}>
+            Simulation
           </Text>
         </View>
       </View>

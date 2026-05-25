@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 
 export interface TelemetryPoint {
   time: number; // elapsed time in seconds
@@ -19,7 +18,6 @@ export const useLabTelemetry = () => {
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [targetTemp, _setTargetTemp] = useState<number>(30.0);
   const [heatingStatus, _setHeatingStatus] = useState<boolean>(false);
-  const [socketStatus, setSocketStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [history, setHistory] = useState<TelemetryPoint[]>([
     { time: 0, temp: 85.0, ambientTemp: 25.0 }
   ]);
@@ -44,56 +42,8 @@ export const useLabTelemetry = () => {
   const coolingConstant = 0.015; // Newton's cooling rate constant 'k'
   const heatingRate = 2.0; // degrees Celsius per second
 
-  const socketRef = useRef<Socket | null>(null);
-  const isConnectingRef = useRef<boolean>(false);
-
-  // 1. WebSocket Handler
+  // Physics Simulation Engine (runs offline)
   useEffect(() => {
-    if (isConnectingRef.current) return;
-    
-    isConnectingRef.current = true;
-    const socket = io('https://scisiam-mock-iot-backend.local', {
-      transports: ['websocket'],
-      autoConnect: false,
-      timeout: 3000,
-    });
-    
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      setSocketStatus('connected');
-    });
-
-    socket.on('disconnect', () => {
-      setSocketStatus('disconnected');
-    });
-
-    socket.on('connect_error', () => {
-      setSocketStatus('disconnected');
-    });
-
-    socket.on('telemetry_update', (data: { waterTemp: number, ambientTemp: number, heating: boolean }) => {
-      setWaterTempState(data.waterTemp);
-      setHeatingStatusState(data.heating);
-      setElapsedTime(prev => {
-        const nextTime = prev + 1;
-        setHistory(hist => {
-          const updated = [...hist, { time: nextTime, temp: data.waterTemp, ambientTemp: data.ambientTemp }];
-          return updated.slice(-30); // Keep last 30 data points
-        });
-        return nextTime;
-      });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  // 2. Physics Simulation Engine (runs when socket is disconnected / mock mode)
-  useEffect(() => {
-    if (socketStatus === 'connected') return;
-
     const interval = setInterval(() => {
       // Safely access current telemetry parameter refs (no interval teardowns)
       const currentTemp = waterTempRef.current;
@@ -133,9 +83,9 @@ export const useLabTelemetry = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [socketStatus, ambientTemp]);
+  }, [ambientTemp]);
 
-  // 3. User Actions
+  // User Actions
   const sendTargetTemperature = (temp: number) => {
     setTargetTempState(temp);
     
@@ -145,19 +95,6 @@ export const useLabTelemetry = () => {
     } else {
       setHeatingStatusState(false);
     }
-
-    // Send to server if connected
-    if (socketStatus === 'connected' && socketRef.current) {
-      socketRef.current.emit('set_target_temp', temp);
-    }
-  };
-
-  const toggleSocketConnection = () => {
-    if (socketStatus === 'disconnected') {
-      setSocketStatus('connected');
-    } else {
-      setSocketStatus('disconnected');
-    }
   };
 
   const resetLab = () => {
@@ -165,10 +102,6 @@ export const useLabTelemetry = () => {
     setElapsedTime(0);
     setHeatingStatusState(false);
     setHistory([{ time: 0, temp: 85.0, ambientTemp }]);
-    
-    if (socketStatus === 'connected' && socketRef.current) {
-      socketRef.current.emit('reset_experiment');
-    }
   };
 
   return {
@@ -177,10 +110,8 @@ export const useLabTelemetry = () => {
     elapsedTime,
     targetTemp,
     heatingStatus,
-    socketStatus,
     history,
     sendTargetTemperature,
-    toggleSocketConnection,
     resetLab,
   };
 };

@@ -14,7 +14,6 @@ export const useTitrationTelemetry = () => {
   const [acidVol, _setAcidVol] = useState<number>(0.0);
   const [ph, setPh] = useState<number>(13.0);
   const [isAutoDripping, _setIsAutoDripping] = useState<boolean>(false);
-  const [socketStatus, setSocketStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [history, setHistory] = useState<TitrationPoint[]>([
     { vol: 0.0, ph: 13.0 }
   ]);
@@ -112,12 +111,7 @@ export const useTitrationTelemetry = () => {
     setIsAutoDrippingState(!isAutoDrippingRef.current);
   };
 
-  // 4. Toggle Socket Mock connection
-  const toggleSocketConnection = () => {
-    setSocketStatus(prev => prev === 'connected' ? 'disconnected' : 'connected');
-  };
-
-  // 5. Reset Experiment
+  // 4. Reset Experiment
   const resetTitration = () => {
     setAcidVolState(0.0);
     setPh(13.0);
@@ -129,11 +123,9 @@ export const useTitrationTelemetry = () => {
     acidVol,
     ph,
     isAutoDripping,
-    socketStatus,
     history,
     addAcidDrop,
     toggleAutoDrip,
-    toggleSocketConnection,
     resetTitration,
   };
 };

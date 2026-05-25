@@ -174,11 +174,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
           <View style={styles.bannerBadgesRow}>
             <View style={styles.bannerBadgeGreen}>
               <View style={styles.badgeDotGreen} />
-              <Text textBreakStrategy="simple" style={styles.badgeTextGreen}>Socket.IO Connected</Text>
+              <Text textBreakStrategy="simple" style={styles.badgeTextGreen}>Simulation Engine Active</Text>
             </View>
             <View style={styles.bannerBadgeBlue}>
               <View style={styles.badgeDotBlue} />
-              <Text textBreakStrategy="simple" style={styles.badgeTextBlue}>ผู้ใช้งาน: 1 คน</Text>
+              <Text textBreakStrategy="simple" style={styles.badgeTextBlue}>ระบบจำลองออฟไลน์</Text>
             </View>
           </View>
         </View>
