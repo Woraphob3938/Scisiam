@@ -5,12 +5,12 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   useWindowDimensions,
   Modal,
   Image,
 } from 'react-native';
-import Svg, { Path, Circle, Rect, Line, Ellipse } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path, Circle, Rect, Line, Ellipse, G } from 'react-native-svg';
 import { colors, spacing, roundness, shadows, isTablet, fonts } from '../theme';
 
 interface DashboardScreenProps {
@@ -58,11 +58,11 @@ const renderLabIcon = (subject: 'Physics' | 'Chemistry' | 'Biology') => {
           <Line x1="16" y1="17" x2="18" y2="17" stroke="#475569" strokeWidth="1" />
 
           {/* Test Tube (Foreground, tilted) */}
-          <g transform="rotate(-20 8 13)">
+          <G transform="rotate(-20 8 13)">
             <Path d="M7 6 L9 6 L9 16 C9 17.1 8.1 18 7 18 C5.9 18 5 17.1 5 16 L5 6 Z" fill="#ef4444" opacity="0.75" />
             <Path d="M5 4 L5 16 C5 17.1 5.9 18 7 18 C8.1 18 9 17.1 9 16 L9 4" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinecap="round" />
             <Ellipse cx="7" cy="4" rx="2.2" ry="0.8" fill="none" stroke="#334155" strokeWidth="1.5" />
-          </g>
+          </G>
         </Svg>
       );
     case 'Biology':

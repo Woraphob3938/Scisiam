@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  SafeAreaView,
   useWindowDimensions,
   ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect, Line, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { colors, spacing, roundness, shadows, isTablet, fonts } from '../theme';
 import { useLabTelemetry } from '../hooks/useLabTelemetry';
