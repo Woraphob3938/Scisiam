@@ -10,7 +10,7 @@ import {
   Modal,
   Image,
 } from 'react-native';
-import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Line, Ellipse } from 'react-native-svg';
 import { colors, spacing, roundness, shadows, isTablet, fonts } from '../theme';
 
 interface DashboardScreenProps {
@@ -27,6 +27,72 @@ interface LabRoom {
   duration: string;
   usersActive: number;
 }
+
+const renderLabIcon = (subject: 'Physics' | 'Chemistry' | 'Biology') => {
+  switch (subject) {
+    case 'Physics':
+      return (
+        <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
+          {/* Orbits */}
+          <Path d="M12 2C16.97 2 21 6.48 21 12C21 17.52 16.97 22 12 22C7.03 22 3 17.52 3 12C3 6.48 7.03 2 12 2Z" stroke="#2563eb" strokeWidth="1.2" transform="rotate(30 12 12) scale(1 0.35)" />
+          <Path d="M12 2C16.97 2 21 6.48 21 12C21 17.52 16.97 22 12 22C7.03 22 3 17.52 3 12C3 6.48 7.03 2 12 2Z" stroke="#10b981" strokeWidth="1.2" transform="rotate(90 12 12) scale(1 0.35)" />
+          <Path d="M12 2C16.97 2 21 6.48 21 12C21 17.52 16.97 22 12 22C7.03 22 3 17.52 3 12C3 6.48 7.03 2 12 2Z" stroke="#db2777" strokeWidth="1.2" transform="rotate(150 12 12) scale(1 0.35)" />
+          {/* Nucleus */}
+          <Circle cx="12" cy="12" r="2.5" fill="#334155" />
+          <Circle cx="10.8" cy="11.2" r="1.8" fill="#ef4444" />
+          <Circle cx="13.2" cy="12.8" r="1.8" fill="#3b82f6" />
+          {/* Electrons */}
+          <Circle cx="18.5" cy="8.2" r="1.2" fill="#ef4444" />
+          <Circle cx="5.5" cy="15.8" r="1.2" fill="#3b82f6" />
+          <Circle cx="12" cy="5.2" r="1.2" fill="#10b981" />
+        </Svg>
+      );
+    case 'Chemistry':
+      return (
+        <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
+          {/* Beaker (Background) */}
+          <Path d="M13 10 L13 18 C13 19.1 13.9 20 15 20 L21 20 C22.1 20 23 19.1 23 18 L23 10 Z" fill="none" stroke="#475569" strokeWidth="1.5" strokeLinejoin="round" />
+          <Line x1="12" y1="10" x2="24" y2="10" stroke="#475569" strokeWidth="1.5" strokeLinecap="round" />
+          <Path d="M13.5 13 L22.5 13 L22.5 18.5 C22.5 19.2 21.8 19.8 21 19.8 L15 19.8 C14.2 19.8 13.5 19.2 13.5 18.5 Z" fill="#10b981" opacity="0.6" />
+          <Line x1="16" y1="15" x2="19" y2="15" stroke="#475569" strokeWidth="1" />
+          <Line x1="16" y1="17" x2="18" y2="17" stroke="#475569" strokeWidth="1" />
+
+          {/* Test Tube (Foreground, tilted) */}
+          <g transform="rotate(-20 8 13)">
+            <Path d="M7 6 L9 6 L9 16 C9 17.1 8.1 18 7 18 C5.9 18 5 17.1 5 16 L5 6 Z" fill="#ef4444" opacity="0.75" />
+            <Path d="M5 4 L5 16 C5 17.1 5.9 18 7 18 C8.1 18 9 17.1 9 16 L9 4" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinecap="round" />
+            <Ellipse cx="7" cy="4" rx="2.2" ry="0.8" fill="none" stroke="#334155" strokeWidth="1.5" />
+          </g>
+        </Svg>
+      );
+    case 'Biology':
+      return (
+        <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
+          {/* DNA Helix */}
+          {/* Backbone 1 */}
+          <Path d="M5 19 C 8 16, 9 12, 12 12 C 15 12, 16 8, 19 5" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Backbone 2 */}
+          <Path d="M5 5 C 8 8, 9 12, 12 12 C 15 12, 16 16, 19 19" stroke="#db2777" strokeWidth="2.5" strokeLinecap="round" />
+          
+          {/* Connecting bars */}
+          <Line x1="7.5" y1="8" x2="7.5" y2="16" stroke="#475569" strokeWidth="1.5" />
+          <Line x1="10" y1="10" x2="10" y2="14" stroke="#475569" strokeWidth="1.5" />
+          <Line x1="14" y1="10" x2="14" y2="14" stroke="#475569" strokeWidth="1.5" />
+          <Line x1="16.5" y1="8" x2="16.5" y2="16" stroke="#475569" strokeWidth="1.5" />
+          
+          {/* Nodes */}
+          <Circle cx="7.5" cy="8" r="2.2" fill="#2563eb" />
+          <Circle cx="7.5" cy="16" r="2.2" fill="#db2777" />
+          <Circle cx="10" cy="10" r="1.8" fill="#2563eb" />
+          <Circle cx="10" cy="14" r="1.8" fill="#db2777" />
+          <Circle cx="14" cy="10" r="1.8" fill="#db2777" />
+          <Circle cx="14" cy="14" r="1.8" fill="#2563eb" />
+          <Circle cx="16.5" cy="8" r="2.2" fill="#db2777" />
+          <Circle cx="16.5" cy="16" r="2.2" fill="#2563eb" />
+        </Svg>
+      );
+  }
+};
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
@@ -151,15 +217,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
                 tablet ? styles.cardTablet : { width: width - 32 },
               ]}
             >
-              {/* Microscope/Subject Icon at the top (centered) */}
+              {/* Subject Icon at the top (centered) */}
               <View style={styles.cardIconContainer}>
-                <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
-                  {/* Microscope shape SVG */}
-                  <Path d="M6 18h12M7 18v-2h10v2M12 16v-4M8 12h8" stroke={colors.textSecondary} strokeWidth="1.5" strokeLinecap="round" />
-                  <Path d="M14 4l-4 6M15 3.5l-3 4.5" stroke={colors.textSecondary} strokeWidth="2" strokeLinecap="round" />
-                  <Rect x="7.5" y="10" width="3" height="2" fill={colors.primary} />
-                  <Path d="M5 21h14" stroke={colors.textSecondary} strokeWidth="2" strokeLinecap="round" />
-                </Svg>
+                {renderLabIcon(lab.subject)}
               </View>
 
               {/* Lab Title (Centered) */}
@@ -455,13 +515,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   labTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 21,
+    fontWeight: '900',
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.xs,
-    fontFamily: fonts.bold,
-    lineHeight: 18 * 1.45,
+    fontFamily: fonts.extraBold,
+    lineHeight: 21 * 1.45,
     paddingVertical: 2,
     includeFontPadding: false,
   },
@@ -503,15 +563,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   categoryText: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textSecondary,
     marginBottom: spacing.md,
     alignSelf: 'flex-start',
     width: '100%',
-    fontFamily: fonts.regular,
-    lineHeight: 12 * 1.45,
+    fontFamily: fonts.bold,
+    lineHeight: 14 * 1.45,
     paddingVertical: 2,
     includeFontPadding: false,
+    fontWeight: '800',
   },
   actionColumn: {
     flexDirection: 'column',
