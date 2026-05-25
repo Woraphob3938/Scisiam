@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle, Rect, Line, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { colors, spacing, roundness, shadows, isTablet, fonts } from '../theme';
-import { useLabTelemetry, TelemetryPoint } from '../hooks/useLabTelemetry';
+import { useLabTelemetry } from '../hooks/useLabTelemetry';
+import { useTitrationTelemetry } from '../hooks/useTitrationTelemetry';
+import { usePhotosynthesisTelemetry } from '../hooks/usePhotosynthesisTelemetry';
 
 interface MainLabScreenProps {
   navigation: any;
@@ -26,36 +28,15 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
   const tablet = isTablet();
   
   // Params
-  const { labTitle = "Newton's law of cooling" } = route.params || {};
+  const { labId = 'newton-cooling', labTitle = "Newton's law of cooling" } = route.params || {};
 
-  // Import our telemetry Hook (simulating Newton's Law of Cooling)
-  const {
-    waterTemp,
-    ambientTemp,
-    elapsedTime,
-    targetTemp,
-    heatingStatus,
-    socketStatus,
-    history,
-    sendTargetTemperature,
-    toggleSocketConnection,
-    resetLab,
-  } = useLabTelemetry();
+  // Instantiate all three hooks unconditionally (React Hook rules)
+  const cooling = useLabTelemetry();
+  const titration = useTitrationTelemetry();
+  const biology = usePhotosynthesisTelemetry();
 
-  // Local state for input target temperature
+  // Local state for target temperature input (Physics only)
   const [inputVal, setInputVal] = useState<string>('30');
-
-  const handleSendCommand = () => {
-    const tempNum = parseFloat(inputVal);
-    if (isNaN(tempNum) || tempNum < 25 || tempNum > 95) {
-      Alert.alert(
-        'ข้อมูลไม่ถูกต้อง',
-        'กรุณากรอกอุณหภูมิเป้าหมายระหว่าง 25°C ถึง 95°C'
-      );
-      return;
-    }
-    sendTargetTemperature(tempNum);
-  };
 
   // Format Elapsed Time into MM:SS
   const formatTime = (seconds: number) => {
@@ -64,73 +45,97 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Generate SVG path for the chart
-  const renderChartPath = (chartWidth: number, chartHeight: number) => {
+  // -------------------------------------------------------------
+  // DYNAMIC CHART PATH CALCULATORS (MEMOIZED INDIVIDUALLY)
+  // -------------------------------------------------------------
+  const chartAreaWidth = tablet ? (width * 0.54) : (width - 32);
+  const graphWidth = chartAreaWidth - 35 - 10;
+  const graphHeight = 140 - 10 - 20; // 110
+
+  // 1. Physics chart path
+  const coolingPaths = useMemo(() => {
+    const history = cooling.history;
     if (history.length < 2) return { linePath: '', fillPath: '' };
-
-    const minY = 20; // fixed lower bound
-    const maxY = 95; // fixed upper bound
+    const minY = 20, maxY = 95;
     const count = history.length;
-
-    // Map data to SVG space
     const points = history.map((point, index) => {
-      const x = (index / (count - 1)) * chartWidth;
-      // Invert Y axis for SVG (0 is top, height is bottom)
+      const x = (index / (count - 1)) * graphWidth;
       const ratio = (point.temp - minY) / (maxY - minY);
-      const clampedRatio = Math.max(0, Math.min(1, ratio));
-      const y = chartHeight - clampedRatio * chartHeight;
+      const clamped = Math.max(0, Math.min(1, ratio));
+      const y = graphHeight - clamped * graphHeight;
       return { x, y };
     });
-
-    // Create line path "M x0 y0 L x1 y1..."
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-
-    // Create closed fill path for gradient
-    const fillPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${chartHeight} L 0 ${chartHeight} Z`;
-
+    const fillPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${graphHeight} L 0 ${graphHeight} Z`;
     return { linePath, fillPath };
+  }, [cooling.history, graphWidth]);
+
+  // 2. Chemistry Titration chart path (X axis is mL volume 0-100, Y is pH 0-14)
+  const titrationPaths = useMemo(() => {
+    const history = titration.history;
+    if (history.length < 2) return { linePath: '', fillPath: '' };
+    const minX = 0, maxX = 100;
+    const minY = 0, maxY = 14;
+    const points = history.map((point) => {
+      const x = ((point.vol - minX) / (maxX - minX)) * graphWidth;
+      const ratio = (point.ph - minY) / (maxY - minY);
+      const clamped = Math.max(0, Math.min(1, ratio));
+      const y = graphHeight - clamped * graphHeight;
+      return { x, y };
+    });
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    const fillPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${graphHeight} L 0 ${graphHeight} Z`;
+    return { linePath, fillPath };
+  }, [titration.history, graphWidth]);
+
+  // 3. Biology Photosynthesis chart path (Y axis is CO2 level 100-1200 ppm)
+  const biologyPaths = useMemo(() => {
+    const history = biology.history;
+    if (history.length < 2) return { linePath: '', fillPath: '' };
+    const minY = 100, maxY = 1200;
+    const count = history.length;
+    const points = history.map((point, index) => {
+      const x = (index / (count - 1)) * graphWidth;
+      const ratio = (point.co2 - minY) / (maxY - minY);
+      const clamped = Math.max(0, Math.min(1, ratio));
+      const y = graphHeight - clamped * graphHeight;
+      return { x, y };
+    });
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    const fillPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${graphHeight} L 0 ${graphHeight} Z`;
+    return { linePath, fillPath };
+  }, [biology.history, graphWidth]);
+
+  // -------------------------------------------------------------
+  // RENDERING MODULES FOR PHYSICS (Newton Cooling)
+  // -------------------------------------------------------------
+  const handleSendCommandPhysics = () => {
+    const tempNum = parseFloat(inputVal);
+    if (isNaN(tempNum) || tempNum < 25 || tempNum > 95) {
+      Alert.alert('ข้อมูลไม่ถูกต้อง', 'กรุณากรอกอุณหภูมิเป้าหมายระหว่าง 25°C ถึง 95°C');
+      return;
+    }
+    cooling.sendTargetTemperature(tempNum);
   };
 
-  // Memoized chart path calculation to prevent heavy graph calculations on text input changes
-  const memoizedChartAreaWidth = tablet ? (width * 0.54) : (width - 32);
-  const memoizedGraphWidth = memoizedChartAreaWidth - 35 - 10;
-  const memoizedGraphHeight = 140 - 10 - 20;
-
-  const chartPaths = useMemo(() => {
-    return renderChartPath(memoizedGraphWidth, memoizedGraphHeight);
-  }, [history, memoizedGraphWidth, memoizedGraphHeight]);
-
-  // Renders the live stream camera rig layout
-  const renderLiveViewport = (viewportWidth: number) => {
-    const height = 200;
+  const renderPhysicsViewport = () => {
     return (
-      <View style={[styles.viewportContainer, { height }]}>
-        {/* Blinking Live Label */}
+      <View style={styles.viewportContainer}>
         <View style={styles.recBadge}>
-          <View style={[styles.recDot, heatingStatus && styles.recDotActive]} />
+          <View style={[styles.recDot, cooling.heatingStatus && styles.recDotActive]} />
           <Text style={styles.recText}>
-            {socketStatus === 'connected' ? '🔴 LIVE STREAM' : '⏸️ OFFLINE VIEW'}
+            {cooling.socketStatus === 'connected' ? '🔴 LIVE STREAM' : '⏸️ OFFLINE VIEW'}
           </Text>
         </View>
+        <Text style={styles.cameraOverlayText}>CAM 01 | COOLING_RIG | FPS: 30</Text>
+        <Text style={styles.timeOverlayText}>TIME: {formatTime(cooling.elapsedTime)}</Text>
 
-        {/* Technical Specs Overlay */}
-        <Text style={styles.cameraOverlayText}>
-          CAM 01 | COOLING_RIG | FPS: 30
-        </Text>
-
-        <Text style={styles.timeOverlayText}>
-          TIME: {formatTime(elapsedTime)}
-        </Text>
-
-        {/* Schematic laboratory rig */}
-        <Svg width="100%" height="100%" viewBox="0 0 300 160">
+        <Svg width="100%" height={200} viewBox="0 0 300 160">
           <Defs>
-            {/* Liquid Gradient */}
             <LinearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={heatingStatus ? '#3b82f6' : '#60a5fa'} stopOpacity="0.8" />
+              <Stop offset="0" stopColor={cooling.heatingStatus ? '#3b82f6' : '#60a5fa'} stopOpacity="0.8" />
               <Stop offset="1" stopColor="#1e3a8a" stopOpacity="0.9" />
             </LinearGradient>
-            {/* Heat Gradient */}
             <LinearGradient id="fireGrad" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor="#ef4444" stopOpacity="0.8" />
               <Stop offset="1" stopColor="#f59e0b" stopOpacity="0.0" />
@@ -139,12 +144,11 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
 
           {/* Table Stirrer Base */}
           <Rect x="80" y="120" width="140" height="15" rx="3" fill="#334155" />
-          {/* Knob on Stirrer */}
-          <Circle cx="110" cy="127" r="3" fill={heatingStatus ? colors.dangerGlow : '#475569'} />
+          <Circle cx="110" cy="127" r="3" fill={cooling.heatingStatus ? colors.dangerGlow : '#475569'} />
           <Circle cx="120" cy="127" r="3" fill="#475569" />
 
           {/* Heating Flame Indicator */}
-          {heatingStatus && (
+          {cooling.heatingStatus && (
             <Path
               d="M 90 120 Q 95 105 100 120 Q 105 100 110 120 Q 115 105 120 120 Q 125 100 130 120 Q 135 105 140 120 Q 145 100 150 120 Q 155 105 160 120 Q 165 100 170 120 Q 175 105 180 120 Q 185 100 190 120 Q 195 105 200 120 Z"
               fill="url(#fireGrad)"
@@ -156,7 +160,7 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
           <Path d="M 97 50 L 103 50" stroke="#f1f5f9" strokeWidth="2.5" />
           <Path d="M 197 50 L 203 50" stroke="#f1f5f9" strokeWidth="2.5" />
 
-          {/* Liquid inside Beaker (water level reacts to temp expansion or stays static) */}
+          {/* Liquid inside Beaker */}
           <Rect x="102" y="65" width="96" height="53" fill="url(#waterGrad)" rx="2" />
           
           {/* Beaker markings */}
@@ -167,139 +171,524 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
 
           {/* Temperature Sensor Rod */}
           <Rect x="148" y="20" width="4" height="70" fill="#94a3b8" rx="1" />
-          {/* Sensor Cap */}
           <Rect x="145" y="15" width="10" height="8" fill="#475569" rx="1" />
-          {/* Glowing sensor tip inside water */}
-          <Circle cx="150" cy="89" r="3.5" fill={heatingStatus ? colors.dangerGlow : colors.cyanGlow} />
+          <Circle cx="150" cy="89" r="3.5" fill={cooling.heatingStatus ? colors.dangerGlow : colors.cyanGlow} />
 
           {/* Steam Effect */}
-          {waterTemp > 50 && (
+          {cooling.waterTemp > 50 && (
             <Path
               d={`M 115 50 Q 120 30 115 15 M 150 45 Q 155 25 150 10 M 180 50 Q 185 30 180 15`}
               stroke="#cbd5e1"
               strokeWidth="1.5"
               strokeDasharray="2,2"
               fill="none"
-              opacity={Math.min(1, (waterTemp - 50) / 45)}
+              opacity={Math.min(1, (cooling.waterTemp - 50) / 45)}
             />
           )}
 
           {/* Digital Telemetry HUD in the viewport */}
           <Rect x="10" y="20" width="70" height="35" rx="4" fill="rgba(15, 23, 42, 0.75)" stroke="#334155" strokeWidth="1" />
           <SvgText x="15" y="32" fill="#94a3b8" fontSize="8" fontWeight="bold">WATER TEMP</SvgText>
-          <SvgText x="15" y="50" fill={heatingStatus ? colors.dangerGlow : colors.cyanGlow} fontSize="14" fontWeight="800">
-            {waterTemp.toFixed(1)}°C
+          <SvgText x="15" y="50" fill={cooling.heatingStatus ? colors.dangerGlow : colors.cyanGlow} fontSize="14" fontWeight="800">
+            {cooling.waterTemp.toFixed(1)}°C
           </SvgText>
         </Svg>
       </View>
     );
   };
 
-  // Render Telemetry values cards (Grid)
-  const renderStats = () => {
+  const renderPhysicsStats = () => {
     return (
       <View style={styles.statsContainer}>
-        {/* Card 1: Water Temp */}
         <View style={styles.statCard}>
-          <Text style={styles.statLabel}>🌡️ อุณหภูมิน้ำ (Water)</Text>
-          <Text style={[styles.statValue, { color: heatingStatus ? colors.dangerGlow : colors.cyanGlow }]}>
-            {waterTemp.toFixed(1)} <Text style={styles.statUnit}>°C</Text>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>🌡️ อุณหภูมิน้ำ (Water)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: cooling.heatingStatus ? colors.dangerGlow : colors.cyanGlow }]}>
+            {cooling.waterTemp.toFixed(1)} <Text textBreakStrategy="simple" style={styles.statUnit}>°C</Text>
           </Text>
-          <Text style={styles.statDesc}>
-            {heatingStatus ? '🔥 ฮีตเตอร์กำลังทำงาน' : '❄️ กำลังระบายความร้อน'}
-          </Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>{cooling.heatingStatus ? '🔥 ฮีตเตอร์ทำงาน' : '❄️ กำลังระบายความร้อน'}</Text>
         </View>
 
-        {/* Card 2: Room Temp */}
         <View style={styles.statCard}>
-          <Text style={styles.statLabel}>🏠 อุณหภูมิห้อง (Room)</Text>
-          <Text style={[styles.statValue, { color: colors.amberGlow }]}>
-            {ambientTemp.toFixed(1)} <Text style={styles.statUnit}>°C</Text>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>🏠 อุณหภูมิห้อง (Room)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: colors.amberGlow }]}>
+            {cooling.ambientTemp.toFixed(1)} <Text textBreakStrategy="simple" style={styles.statUnit}>°C</Text>
           </Text>
-          <Text style={styles.statDesc}>เซ็นเซอร์วัดค่าแวดล้อมคงที่</Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>เซ็นเซอร์แวดล้อมคงที่</Text>
         </View>
 
-        {/* Card 3: Elapsed Time */}
         <View style={styles.statCard}>
-          <Text style={styles.statLabel}>⏱️ เวลาทดลอง (Time)</Text>
-          <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-            {formatTime(elapsedTime)}
+          <Text textBreakStrategy="simple" style={styles.statLabel}>⏱️ เวลาทดลอง (Time)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: colors.textPrimary }]}>
+            {formatTime(cooling.elapsedTime)}
           </Text>
-          <Text style={styles.statDesc}>เวลาผ่านไปในการทดลอง</Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>เวลาในการระบายความร้อน</Text>
         </View>
       </View>
     );
   };
 
-  // Render SVG Chart Panel
-  const renderChart = (chartAreaWidth: number) => {
+  const renderPhysicsControls = () => {
+    return (
+      <View style={styles.controlPanel}>
+        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมการทดลอง (Control Panel)</Text>
+        <Text textBreakStrategy="simple" style={styles.controlSub}>สั่งการฮีตเตอร์ต้มน้ำระยะไกล (IoT Remote)</Text>
+        <View style={styles.inputRow}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              value={inputVal}
+              onChangeText={setInputVal}
+              keyboardType="numeric"
+              placeholder="30"
+              placeholderTextColor={colors.textMuted}
+            />
+            <Text textBreakStrategy="simple" style={styles.inputUnit}>°C</Text>
+          </View>
+
+          <TouchableOpacity style={styles.commandBtn} onPress={handleSendCommandPhysics} activeOpacity={0.85}>
+            {cooling.heatingStatus ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <Text textBreakStrategy="simple" style={styles.commandBtnText}>ยืนยันส่งคำสั่ง</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.buttonActionGrid}>
+          <TouchableOpacity style={styles.resetBtn} onPress={cooling.resetLab}>
+            <Text textBreakStrategy="simple" style={styles.resetBtnText}>🔄 รีเซ็ตแล็บ (Reset)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.connectionToggle, cooling.socketStatus === 'connected' ? styles.connOnline : styles.connOffline]}
+            onPress={cooling.toggleSocketConnection}
+          >
+            <Text textBreakStrategy="simple" style={styles.connToggleText}>
+              {cooling.socketStatus === 'connected' ? '🟢 Socket: Online' : '🔴 Socket: Offline'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // -------------------------------------------------------------
+  // RENDERING MODULES FOR CHEMISTRY (Titration Lab)
+  // -------------------------------------------------------------
+  const renderChemistryViewport = () => {
+    const isPink = titration.ph > 8.2;
+    return (
+      <View style={styles.viewportContainer}>
+        <View style={styles.recBadge}>
+          <View style={[styles.recDot, titration.isAutoDripping && styles.recDotActive]} />
+          <Text style={styles.recText}>
+            {titration.socketStatus === 'connected' ? '🔴 LIVE STREAM' : '⏸️ OFFLINE VIEW'}
+          </Text>
+        </View>
+        <Text style={styles.cameraOverlayText}>CAM 02 | TITRATION_RIG | FPS: 30</Text>
+        <Text style={styles.timeOverlayText}>VOLUME: {titration.acidVol.toFixed(1)} mL</Text>
+
+        <Svg width="100%" height={200} viewBox="0 0 300 160">
+          <Defs>
+            <LinearGradient id="flaskGrad" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={isPink ? '#f472b6' : '#f8fafc'} stopOpacity={isPink ? 0.75 : 0.4} />
+              <Stop offset="1" stopColor={isPink ? '#db2777' : '#cbd5e1'} stopOpacity={isPink ? 0.9 : 0.6} />
+            </LinearGradient>
+          </Defs>
+
+          {/* Table / Base */}
+          <Rect x="80" y="135" width="140" height="10" rx="2" fill="#475569" />
+
+          {/* Titration Stand Rod */}
+          <Rect x="190" y="20" width="4" height="115" fill="#64748b" />
+          <Rect x="155" y="45" width="38" height="6" fill="#475569" />
+
+          {/* Glass Burette Container */}
+          <Rect x="145" y="10" width="10" height="75" rx="1" fill="#f1f5f9" opacity="0.3" stroke="#cbd5e1" strokeWidth="1" />
+          {/* Acid Level inside burette */}
+          {titration.acidVol < 100 && (
+            <Rect
+              x="146.5"
+              y={11 + (titration.acidVol / 100.0) * 60}
+              width="7"
+              height={73 - (titration.acidVol / 100.0) * 60}
+              fill="#93c5fd"
+              opacity="0.75"
+            />
+          )}
+          {/* Valve/Tap */}
+          <Circle cx="150" cy="85" r="3" fill="#ef4444" />
+
+          {/* Falling drop animation based on auto drip state */}
+          {titration.isAutoDripping && (
+            <Circle cx="150" cy={92 + ((titration.acidVol * 25) % 20)} r="2" fill="#93c5fd" />
+          )}
+
+          {/* Erlenmeyer Flask Outline */}
+          <Path d="M 140 100 L 160 100 L 160 108 L 180 132 Q 182 135 178 135 L 122 135 Q 118 135 120 132 L 140 108 Z" stroke="#f1f5f9" strokeWidth="2" fill="none" />
+          
+          {/* Liquid inside flask (Color reacts dynamically to pH) */}
+          <Path
+            d="M 132 120 L 168 120 L 176 131 Q 178 133 175 133 L 125 133 Q 122 133 124 131 Z"
+            fill="url(#flaskGrad)"
+          />
+
+          {/* Digital HUD box inside chemistry viewport */}
+          <Rect x="10" y="20" width="70" height="35" rx="4" fill="rgba(15, 23, 42, 0.75)" stroke="#334155" strokeWidth="1" />
+          <SvgText x="15" y="32" fill="#94a3b8" fontSize="8" fontWeight="bold">MIX pH VALUE</SvgText>
+          <SvgText x="15" y="50" fill={isPink ? '#f472b6' : '#2563eb'} fontSize="13" fontWeight="800">
+            pH {titration.ph.toFixed(2)}
+          </SvgText>
+        </Svg>
+      </View>
+    );
+  };
+
+  const renderChemistryStats = () => {
+    const isPink = titration.ph > 8.2;
+    return (
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>🧪 ปริมาตรกรด (Acid Added)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: colors.primary }]}>
+            {titration.acidVol.toFixed(1)} <Text textBreakStrategy="simple" style={styles.statUnit}>mL</Text>
+          </Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>กรด HCl 0.1M ที่เพิ่มเข้าไป</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>📐 ค่าความเป็นกรด-เบส (pH)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: isPink ? '#db2777' : colors.primary }]}>
+            {titration.ph.toFixed(2)}
+          </Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>{isPink ? '💗 ด่าง (เบส) + Phenolphthalein' : '🤍 สารละลายสะเทินเป็นกลาง/กรด'}</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>🧪 ปริมาตรตั้งต้น (Base Vol)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: colors.textPrimary }]}>
+            50.0 <Text textBreakStrategy="simple" style={styles.statUnit}>mL</Text>
+          </Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>เบส NaOH 0.1M ในขวด</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderChemistryControls = () => {
+    return (
+      <View style={styles.controlPanel}>
+        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมการหยดกรด (Titration Controller)</Text>
+        <Text textBreakStrategy="simple" style={styles.controlSub}>สั่งสั่งการบิวเรตต์อิเล็กทรอนิกส์ระยะไกล (Burette IoT)</Text>
+        
+        <View style={styles.inputRow}>
+          <TouchableOpacity style={[styles.commandBtn, { flex: 1, marginRight: spacing.md }]} onPress={() => titration.addAcidDrop(0.5)}>
+            <Text textBreakStrategy="simple" style={styles.commandBtnText}>💧 หยดกรด (+0.5 mL)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.commandBtn, { flex: 1, backgroundColor: titration.isAutoDripping ? colors.dangerGlow : colors.primary }]}
+            onPress={titration.toggleAutoDrip}
+          >
+            <Text textBreakStrategy="simple" style={styles.commandBtnText}>
+              {titration.isAutoDripping ? '⏸️ หยุดหยดออโต้' : '⏳ หยดอัตโนมัติ'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.buttonActionGrid}>
+          <TouchableOpacity style={styles.resetBtn} onPress={titration.resetTitration}>
+            <Text textBreakStrategy="simple" style={styles.resetBtnText}>🔄 รีเซ็ตการทดลอง (Reset)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.connectionToggle, titration.socketStatus === 'connected' ? styles.connOnline : styles.connOffline]}
+            onPress={titration.toggleSocketConnection}
+          >
+            <Text textBreakStrategy="simple" style={styles.connToggleText}>
+              {titration.socketStatus === 'connected' ? '🟢 Socket: Online' : '🔴 Socket: Offline'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // -------------------------------------------------------------
+  // RENDERING MODULES FOR BIOLOGY (Photosynthesis Chamber)
+  // -------------------------------------------------------------
+  const renderBiologyViewport = () => {
+    // We animate bubbles using elapsed time modulo values
+    const bubbleSpeed = 16;
+    const timeTick = biology.elapsedTime;
+    return (
+      <View style={styles.viewportContainer}>
+        <View style={styles.recBadge}>
+          <View style={[styles.recDot, biology.light > 0 && styles.recDotActive]} />
+          <Text style={styles.recText}>
+            {biology.socketStatus === 'connected' ? '🔴 LIVE STREAM' : '⏸️ OFFLINE VIEW'}
+          </Text>
+        </View>
+        <Text style={styles.cameraOverlayText}>CAM 03 | CHAMBER_BIO | FPS: 30</Text>
+        <Text style={styles.timeOverlayText}>CO2 LEVEL: {biology.co2.toFixed(1)} ppm</Text>
+
+        <Svg width="100%" height={200} viewBox="0 0 300 160">
+          <Defs>
+            {/* Bulb Glow Gradient */}
+            <LinearGradient id="bulbGlow" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#fef08a" stopOpacity={biology.light / 100.0 * 0.6} />
+              <Stop offset="1" stopColor="#eab308" stopOpacity="0.0" />
+            </LinearGradient>
+          </Defs>
+
+          {/* Chamber Outline Box */}
+          <Rect x="50" y="25" width="200" height="115" rx="4" stroke="#f1f5f9" strokeWidth="2.5" fill="none" opacity="0.3" />
+          <Rect x="48" y="22" width="204" height="121" rx="6" stroke="#475569" strokeWidth="1" fill="none" />
+
+          {/* Glowing Lamp from ceiling */}
+          <Rect x="135" y="25" width="30" height="10" fill="#64748b" />
+          <Circle cx="150" cy="38" r="8" fill={biology.light > 0 ? '#fef08a' : '#94a3b8'} />
+          
+          {/* Bulb Glow rays */}
+          {biology.light > 0 && (
+            <Path d="M 120 40 L 180 40 L 210 110 L 90 110 Z" fill="url(#bulbGlow)" />
+          )}
+
+          {/* Plant Pot */}
+          <Rect x="135" y="115" width="30" height="20" fill="#b45309" rx="1.5" />
+          <Line x1="133" y1="115" x2="167" y2="115" stroke="#78350f" strokeWidth="3.5" />
+
+          {/* Plant Leaves and stem */}
+          <Path d="M 150 115 Q 150 90 148 70" stroke="#047857" strokeWidth="3" fill="none" />
+          {/* Left Leaves */}
+          <Path d="M 148 100 Q 130 90 142 85 Q 148 95 148 100" fill="#10b981" />
+          <Path d="M 148 80 Q 125 70 138 65 Q 148 75 148 80" fill="#10b981" />
+          {/* Right Leaves */}
+          <Path d="M 149 105 Q 168 95 156 90 Q 149 98 149 105" fill="#10b981" />
+          <Path d="M 148 88 Q 170 78 158 73 Q 148 83 148 88" fill="#10b981" />
+          {/* Top Bud */}
+          <Circle cx="148" cy="68" r="3.5" fill="#34d399" />
+
+          {/* Oxygen Bubbles rising upwards when light is on */}
+          {biology.light > 0 && (
+            <React.Fragment>
+              <Circle cx="135" cy={100 - ((timeTick * bubbleSpeed) % 65)} r="1.5" fill="#34d399" opacity="0.8" />
+              <Circle cx="160" cy={95 - ((timeTick * bubbleSpeed + 25) % 65)} r="2" fill="#34d399" opacity="0.7" />
+              <Circle cx="140" cy={80 - ((timeTick * bubbleSpeed + 45) % 65)} r="1.2" fill="#34d399" opacity="0.9" />
+              <Circle cx="155" cy={75 - ((timeTick * bubbleSpeed + 10) % 65)} r="1.8" fill="#34d399" opacity="0.85" />
+            </React.Fragment>
+          )}
+
+          {/* Small fan inside chamber */}
+          <Circle cx="70" cy="45" r="8" fill="#475569" />
+          {/* Fan blades */}
+          <Path
+            d="M 70 45 L 70 37 M 70 45 L 70 53 M 70 45 L 62 45 M 70 45 L 78 45"
+            stroke="#1e293b"
+            strokeWidth="1.5"
+            rotation={biology.fanStatus ? timeTick * 45 : 0}
+            origin="70, 45"
+          />
+          {biology.fanStatus && (
+            <Path d="M 83 41 Q 88 45 83 49 M 87 41 Q 92 45 87 49" stroke="#94a3b8" strokeWidth="1" fill="none" />
+          )}
+
+          {/* Digital HUD box inside biology viewport */}
+          <Rect x="10" y="20" width="70" height="35" rx="4" fill="rgba(15, 23, 42, 0.75)" stroke="#334155" strokeWidth="1" />
+          <SvgText x="15" y="32" fill="#94a3b8" fontSize="8" fontWeight="bold">PHOTOSYNTHESIS</SvgText>
+          <SvgText x="15" y="50" fill={biology.light > 0 ? colors.emeraldGlow : colors.textSecondary} fontSize="11" fontWeight="800">
+            {biology.o2Rate.toFixed(1)} ppm/m
+          </SvgText>
+        </Svg>
+      </View>
+    );
+  };
+
+  const renderBiologyStats = () => {
+    return (
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>💡 ความเข้มแสง (Light)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: colors.amberGlow }]}>
+            {biology.light.toFixed(0)} <Text textBreakStrategy="simple" style={styles.statUnit}>%</Text>
+          </Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>ควบคุมความสว่างหลอดไฟ LED</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>🌱 ความเข้มข้น CO2 (Chamber)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: biology.co2 > 450 ? colors.dangerGlow : colors.emeraldGlow }]}>
+            {biology.co2.toFixed(1)} <Text textBreakStrategy="simple" style={styles.statUnit}>ppm</Text>
+          </Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>{biology.co2 < 400 ? '🍃 พืชกำลังดูดซึมคาร์บอน' : '🍂 คาร์บอนสะสมจากการหายใจ'}</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text textBreakStrategy="simple" style={styles.statLabel}>💨 อัตราผลิต O2 (Oxygen)</Text>
+          <Text textBreakStrategy="simple" style={[styles.statValue, { color: colors.emeraldGlow }]}>
+            {biology.o2Rate.toFixed(1)} <Text textBreakStrategy="simple" style={styles.statUnit}>ppm/m</Text>
+          </Text>
+          <Text textBreakStrategy="simple" style={styles.statDesc}>อัตราการผลิตก๊าซออกซิเจน</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderBiologyControls = () => {
+    const currentLightStr = biology.light.toFixed(0);
+    return (
+      <View style={styles.controlPanel}>
+        <Text textBreakStrategy="simple" style={styles.panelTitle}>แผงควบคุมระบบชีวนิเวศ (Bio-Chamber Controls)</Text>
+        <Text textBreakStrategy="simple" style={styles.controlSub}>สั่งปรับความเข้มแสงไฟสังเคราะห์แสง (IoT Light Controller)</Text>
+
+        <View style={styles.inputRow}>
+          {/* Quick buttons to set light level */}
+          <View style={[styles.buttonActionGrid, { flex: 1, marginTop: 0, marginRight: spacing.md }]}>
+            <TouchableOpacity style={[styles.resetBtn, { marginRight: 8, height: 48 }]} onPress={() => biology.changeLight(0)}>
+              <Text textBreakStrategy="simple" style={styles.resetBtnText}>💡 ปิดไฟ (0%)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.resetBtn, { marginRight: 8, height: 48 }]} onPress={() => biology.changeLight(50)}>
+              <Text textBreakStrategy="simple" style={styles.resetBtnText}>💡 กลาง (50%)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.resetBtn, { height: 48, marginRight: 0 }]} onPress={() => biology.changeLight(100)}>
+              <Text textBreakStrategy="simple" style={styles.resetBtnText}>💡 สูง (100%)</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.inputWrapper, { width: 75, flex: 0, marginRight: 0 }]}>
+            <Text textBreakStrategy="simple" style={styles.input}>{currentLightStr}</Text>
+            <Text textBreakStrategy="simple" style={styles.inputUnit}>%</Text>
+          </View>
+        </View>
+
+        <View style={styles.buttonActionGrid}>
+          <TouchableOpacity
+            style={[styles.resetBtn, biology.fanStatus && { backgroundColor: 'rgba(37, 99, 235, 0.1)', borderColor: colors.primary }]}
+            onPress={biology.toggleFan}
+          >
+            <Text textBreakStrategy="simple" style={[styles.resetBtnText, biology.fanStatus && { color: colors.primary }]}>
+              {biology.fanStatus ? '💨 พัดลม: เปิดอยู่' : '💨 พัดลม: ปิดอยู่'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.resetBtn} onPress={biology.resetChamber}>
+            <Text textBreakStrategy="simple" style={styles.resetBtnText}>🔄 รีเซ็ตตู้ควบคุม (Reset)</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.buttonActionGrid, { marginTop: spacing.sm }]}>
+          <TouchableOpacity
+            style={[styles.connectionToggle, { flex: 1 }, biology.socketStatus === 'connected' ? styles.connOnline : styles.connOffline]}
+            onPress={biology.toggleSocketConnection}
+          >
+            <Text textBreakStrategy="simple" style={styles.connToggleText}>
+              {biology.socketStatus === 'connected' ? '🟢 Socket: Online' : '🔴 Socket: Offline'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // -------------------------------------------------------------
+  // DYNAMIC CHART RENDERING DISPATCHER
+  // -------------------------------------------------------------
+  const renderSelectedChart = () => {
     const chartHeight = 140;
     const paddingLeft = 35;
     const paddingRight = 10;
     const paddingTop = 10;
     const paddingBottom = 20;
 
-    const graphHeight = chartHeight - paddingTop - paddingBottom;
-    const { linePath, fillPath } = chartPaths;
+    let linePath = '', fillPath = '', title = '', subtitle = '', footnote = '';
+    let gridValues: number[] = [];
+    let minY = 0, maxY = 100;
+    let labelSuffix = '';
+
+    if (labId === 'newton-cooling') {
+      linePath = coolingPaths.linePath;
+      fillPath = coolingPaths.fillPath;
+      title = 'กราฟค่าเซ็นเซอร์อุณหภูมิ (Real-time Telemetry)';
+      subtitle = 'อุณหภูมิน้ำ (°C) vs เวลา (วินาที)';
+      footnote = '* แสดงการระบายอุณหภูมิในช่วง 30 วินาทีล่าสุด';
+      gridValues = [20, 45, 70, 95];
+      minY = 20;
+      maxY = 95;
+      labelSuffix = '°';
+    } else if (labId === 'acid-base-titration') {
+      linePath = titrationPaths.linePath;
+      fillPath = titrationPaths.fillPath;
+      title = 'กราฟการไทเทรตกรด-เบส (pH Curve)';
+      subtitle = 'ค่า pH vs ปริมาตรกรด HCl ที่หยด (mL)';
+      footnote = '* ปลายทางทางคณิตศาสตร์แสดงความสะเทินของปฏิกิริยาที่ปริมาณ 50 mL';
+      gridValues = [0, 3.5, 7, 10.5, 14];
+      minY = 0;
+      maxY = 14;
+      labelSuffix = '';
+    } else if (labId === 'photosynthesis-monitor') {
+      linePath = biologyPaths.linePath;
+      fillPath = biologyPaths.fillPath;
+      title = 'กราฟความเข้มข้น CO2 (Carbon Dioxide Chamber Graph)';
+      subtitle = 'ความเข้มข้น CO2 (ppm) vs เวลา (วินาที)';
+      footnote = '* สังเกตการตกของปริมาณคาร์บอนไดออกไซด์เมื่อพืชสังเคราะห์แสง';
+      gridValues = [100, 375, 650, 925, 1200];
+      minY = 100;
+      maxY = 1200;
+      labelSuffix = 'p';
+    }
 
     return (
       <View style={styles.chartPanel}>
         <View style={styles.chartHeader}>
-          <Text style={styles.panelTitle}>กราฟค่าเซ็นเซอร์อุณหภูมิ (Real-time Telemetry)</Text>
-          <Text style={styles.chartAxisSub}>อุณหภูมิ (°C) vs เวลา (วินาที)</Text>
+          <Text textBreakStrategy="simple" style={styles.panelTitle}>{title}</Text>
+          <Text textBreakStrategy="simple" style={styles.chartAxisSub}>{subtitle}</Text>
         </View>
 
-        {/* Custom SVG Line Chart */}
         <View style={{ height: chartHeight }}>
           <Svg width={chartAreaWidth} height={chartHeight}>
             <Defs>
               <LinearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={colors.cyanGlow} stopOpacity="0.4" />
+                <Stop offset="0" stopColor={labId === 'acid-base-titration' ? '#db2777' : colors.cyanGlow} stopOpacity="0.4" />
                 <Stop offset="1" stopColor={colors.primary} stopOpacity="0.0" />
               </LinearGradient>
             </Defs>
 
             {/* Left Y-axis Grid Labels & lines */}
-            {[20, 45, 70, 95].map((val) => {
-              const yRatio = (val - 20) / (95 - 20);
-              const yPos = chartHeight - paddingBottom - yRatio * graphHeight;
-              return (
-                <React.Fragment key={val}>
-                  {/* Grid Line */}
-                  <Line
-                    x1={paddingLeft}
-                    y1={yPos}
-                    x2={chartAreaWidth - paddingRight}
-                    y2={yPos}
-                    stroke={colors.cardBorder}
-                    strokeWidth="1"
-                    strokeDasharray="4,4"
-                  />
-                  {/* Axis Label */}
-                  <SvgText
-                    x={paddingLeft - 6}
-                    y={yPos + 3}
-                    fill={colors.textMuted}
-                    fontSize="8"
-                    fontWeight="bold"
-                    textAnchor="end"
-                  >
-                    {val}°
-                  </SvgText>
-                </React.Fragment>
-              );
+            {gridValues.map((val) => {
+               const yRatio = (val - minY) / (maxY - minY);
+               const yPos = chartHeight - paddingBottom - yRatio * graphHeight;
+               return (
+                 <React.Fragment key={val}>
+                   <Line
+                     x1={paddingLeft}
+                     y1={yPos}
+                     x2={chartAreaWidth - paddingRight}
+                     y2={yPos}
+                     stroke={colors.cardBorder}
+                     strokeWidth="1"
+                     strokeDasharray="4,4"
+                   />
+                   <SvgText
+                     x={paddingLeft - 6}
+                     y={yPos + 3}
+                     fill={colors.textMuted}
+                     fontSize="8"
+                     fontWeight="bold"
+                     textAnchor="end"
+                     fontFamily={fonts.bold}
+                   >
+                     {val.toFixed(0)}{labelSuffix}
+                   </SvgText>
+                 </React.Fragment>
+               );
             })}
 
             {/* Render Path Data inside offset group */}
-            {history.length >= 2 && (
+            {linePath !== '' && (
               <View style={{ transform: [{ translateX: paddingLeft }, { translateY: paddingTop }] }}>
-                {/* Gradient Area Fill */}
                 <Path d={fillPath} fill="url(#chartGrad)" />
-                {/* Neon Stroke Line */}
                 <Path
                   d={linePath}
                   fill="none"
-                  stroke={heatingStatus ? colors.dangerGlow : colors.cyanGlow}
+                  stroke={labId === 'acid-base-titration' ? '#db2777' : (labId === 'photosynthesis-monitor' ? colors.emeraldGlow : colors.cyanGlow)}
                   strokeWidth="2.5"
                 />
               </View>
@@ -324,98 +713,67 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
             />
           </Svg>
         </View>
-        <Text style={styles.chartFootnote}>* แสดงความก้าวหน้าของอุณหภูมิในช่วง 30 วินาทีล่าสุด</Text>
+        <Text textBreakStrategy="simple" style={styles.chartFootnote}>{footnote}</Text>
       </View>
     );
   };
 
-  // Render Command & Remote Control panel
-  const renderControlPanel = () => {
-    return (
-      <View style={styles.controlPanel}>
-        <Text style={styles.panelTitle}>แผงควบคุมการทดลอง (Control Panel)</Text>
-        
-        {/* Remote Heater setting */}
-        <Text style={styles.controlSub}>สั่งการฮีตเตอร์ต้มน้ำระยะไกล (IoT Remote)</Text>
-        <View style={styles.inputRow}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              value={inputVal}
-              onChangeText={setInputVal}
-              keyboardType="numeric"
-              placeholder="30"
-              placeholderTextColor={colors.textMuted}
-            />
-            <Text style={styles.inputUnit}>°C</Text>
-          </View>
+  // -------------------------------------------------------------
+  // DYNAMIC GENERAL LAYOUT STRUCTURE DISPATCHER
+  // -------------------------------------------------------------
+  const renderViewportByLab = () => {
+    if (labId === 'newton-cooling') return renderPhysicsViewport();
+    if (labId === 'acid-base-titration') return renderChemistryViewport();
+    if (labId === 'photosynthesis-monitor') return renderBiologyViewport();
+    return null;
+  };
 
-          <TouchableOpacity
-            style={styles.commandBtn}
-            onPress={handleSendCommand}
-            activeOpacity={0.85}
-          >
-            {heatingStatus ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <Text style={styles.commandBtnText}>ยืนยันส่งคำสั่ง</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+  const renderStatsByLab = () => {
+    if (labId === 'newton-cooling') return renderPhysicsStats();
+    if (labId === 'acid-base-titration') return renderChemistryStats();
+    if (labId === 'photosynthesis-monitor') return renderBiologyStats();
+    return null;
+  };
 
-        {/* System parameters and actions */}
-        <View style={styles.buttonActionGrid}>
-          <TouchableOpacity
-            style={styles.resetBtn}
-            onPress={resetLab}
-          >
-            <Text style={styles.resetBtnText}>🔄 รีเซ็ตแล็บ (Reset)</Text>
-          </TouchableOpacity>
+  const renderControlsByLab = () => {
+    if (labId === 'newton-cooling') return renderPhysicsControls();
+    if (labId === 'acid-base-titration') return renderChemistryControls();
+    if (labId === 'photosynthesis-monitor') return renderBiologyControls();
+    return null;
+  };
 
-          <TouchableOpacity
-            style={[
-              styles.connectionToggle,
-              socketStatus === 'connected' ? styles.connOnline : styles.connOffline,
-            ]}
-            onPress={toggleSocketConnection}
-          >
-            <Text style={styles.connToggleText}>
-              {socketStatus === 'connected' ? '🟢 Socket: Online' : '🔴 Socket: Offline'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+  const selectedSocketStatus = () => {
+    if (labId === 'newton-cooling') return cooling.socketStatus;
+    if (labId === 'acid-base-titration') return titration.socketStatus;
+    if (labId === 'photosynthesis-monitor') return biology.socketStatus;
+    return 'disconnected';
   };
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Top Navbar */}
       <View style={styles.topNav}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backBtnText}>⬅️ กลับ</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text textBreakStrategy="simple" style={styles.backBtnText}>⬅️ กลับ</Text>
         </TouchableOpacity>
 
-        <Text style={styles.navTitle} numberOfLines={1}>
+        <Text textBreakStrategy="simple" style={styles.navTitle} numberOfLines={1}>
           {labTitle}
         </Text>
 
         <View style={[
           styles.statusBadge,
-          socketStatus === 'connected' ? styles.statusOnline : styles.statusOffline
+          selectedSocketStatus() === 'connected' ? styles.statusOnline : styles.statusOffline
         ]}>
           <View style={[
             styles.statusDot,
-            { backgroundColor: socketStatus === 'connected' ? colors.emeraldGlow : colors.dangerGlow }
+            { backgroundColor: selectedSocketStatus() === 'connected' ? colors.emeraldGlow : colors.dangerGlow }
           ]} />
-          <Text style={[
+          <Text textBreakStrategy="simple" style={[
             styles.statusText,
-            { color: socketStatus === 'connected' ? colors.emeraldGlow : colors.dangerGlow }
+            { color: selectedSocketStatus() === 'connected' ? colors.emeraldGlow : colors.dangerGlow }
           ]}>
-            {socketStatus === 'connected' ? 'IoT Online' : 'Simulation'}
+            {selectedSocketStatus() === 'connected' ? 'IoT Online' : 'Simulation'}
           </Text>
         </View>
       </View>
@@ -427,28 +785,28 @@ export const MainLabScreen: React.FC<MainLabScreenProps> = ({ navigation, route 
           {/* Left Column (Video Stream & Control) */}
           <View style={styles.leftCol}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {renderLiveViewport(width * 0.4)}
+              {renderViewportByLab()}
               <View style={{ height: spacing.md }} />
-              {renderControlPanel()}
+              {renderControlsByLab()}
             </ScrollView>
           </View>
 
           {/* Right Column (Stats & Chart) */}
           <View style={styles.rightCol}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {renderStats()}
+              {renderStatsByLab()}
               <View style={{ height: spacing.md }} />
-              {renderChart(width * 0.54)}
+              {renderSelectedChart()}
             </ScrollView>
           </View>
         </View>
       ) : (
         /* SMARTPHONE LAYOUT: Vertical Scroll Stack */
         <ScrollView contentContainerStyle={styles.scrollWrapper} showsVerticalScrollIndicator={false}>
-          {renderLiveViewport(width - 32)}
-          {renderStats()}
-          {renderChart(width - 32)}
-          {renderControlPanel()}
+          {renderViewportByLab()}
+          {renderStatsByLab()}
+          {renderSelectedChart()}
+          {renderControlsByLab()}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -483,6 +841,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '700',
     fontFamily: fonts.bold,
+    lineHeight: 12 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   navTitle: {
@@ -493,6 +853,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: spacing.sm,
     fontFamily: fonts.extraBold,
+    lineHeight: 16 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   statusBadge: {
@@ -521,6 +883,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     fontFamily: fonts.bold,
+    lineHeight: 10 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   // Responsive Splitting for Tablet
@@ -541,7 +905,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  // Section A: Video Viewport
+  // Video Viewport Container
   viewportContainer: {
     backgroundColor: '#05070c',
     borderRadius: roundness.md,
@@ -551,6 +915,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
+    height: 200,
   },
   recBadge: {
     position: 'absolute',
@@ -598,7 +963,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 2,
   },
-  // Section B: Stats
+  // Stats
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -621,27 +986,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4,
     fontFamily: fonts.bold,
+    lineHeight: 10 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   statValue: {
     fontSize: 18,
     fontWeight: '900',
     fontFamily: fonts.extraBold,
+    lineHeight: 18 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   statUnit: {
     fontSize: 12,
     fontWeight: 'normal',
     fontFamily: fonts.regular,
+    lineHeight: 12 * 1.45,
   },
   statDesc: {
     fontSize: 8,
     color: colors.textMuted,
     marginTop: 4,
     fontFamily: fonts.regular,
+    lineHeight: 8 * 1.5,
+    paddingVertical: 1,
     includeFontPadding: false,
   },
-  // Section C: SVG Chart
+  // SVG Chart Panel
   chartPanel: {
     backgroundColor: colors.cardBg,
     borderRadius: roundness.md,
@@ -659,6 +1031,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     fontFamily: fonts.bold,
+    lineHeight: 14 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   controlSub: {
@@ -666,6 +1040,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
     fontFamily: fonts.regular,
+    lineHeight: 12 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   chartAxisSub: {
@@ -673,6 +1049,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
     fontFamily: fonts.regular,
+    lineHeight: 10 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   axisLabel: {
@@ -687,7 +1065,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: spacing.xs,
   },
-  // Section D: Control Panel
+  // Control Panel
   controlPanel: {
     backgroundColor: colors.cardBg,
     borderRadius: roundness.md,
@@ -718,7 +1096,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
-    padding: 0, // clears defaults
+    padding: 0,
   },
   inputUnit: {
     color: colors.textSecondary,
@@ -740,6 +1118,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: fonts.bold,
+    lineHeight: 14 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   buttonActionGrid: {
@@ -763,6 +1143,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     fontFamily: fonts.bold,
+    lineHeight: 12 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   connectionToggle: {
@@ -787,6 +1169,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     fontFamily: fonts.bold,
+    lineHeight: 12 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
 });

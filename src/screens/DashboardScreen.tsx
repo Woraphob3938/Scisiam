@@ -31,13 +31,13 @@ interface LabRoom {
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const tablet = isTablet();
-  
+
   // Params from login
   const { role = 'student', name = 'ผู้ใช้งาน' } = route.params || {};
 
   // Active filter category
   const [activeCategory, setActiveCategory] = useState<'All' | 'Physics' | 'Chemistry' | 'Biology'>('All');
-  
+
   // Detail Modal State
   const [selectedLab, setSelectedLab] = useState<LabRoom | null>(null);
 
@@ -56,7 +56,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
       id: 'acid-base-titration',
       title: 'Acid-Base Titration Lab',
       subject: 'Chemistry',
-      status: 'busy',
+      status: 'available',
       description: 'การทดลองไทเทรตกรด-เบสระยะไกล ควบคุมการหยดของบิวเรตต์อัตโนมัติด้วยคำสั่งดิจิทัลและติดตามค่า pH ในสารละลายแบบ Real-time',
       duration: '25-30 นาที',
       usersActive: 3,
@@ -65,7 +65,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
       id: 'photosynthesis-monitor',
       title: 'Photosynthesis Rate Chamber',
       subject: 'Biology',
-      status: 'offline',
+      status: 'available',
       description: 'วิเคราะห์อัตราการสังเคราะห์แสงของพืชระยะไกล โดยสั่งควบคุมความสว่างหลอดไฟ LED ในกล่องทดลองปิด และตรวจดูความเข้มข้น CO2/O2',
       duration: '45 นาที',
       usersActive: 0,
@@ -91,7 +91,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
           <Image source={require('../../assets/logo.png')} style={styles.logoImage} />
           <Text style={styles.navTitle}>SciSiam</Text>
         </View>
-        
+
         {/* Right side is blank - no login/register buttons as requested */}
         <View />
       </View>
@@ -99,8 +99,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Banner Section */}
         <View style={styles.banner}>
-          <Text style={styles.bannerTitle}>รายชื่อห้องแล็บ</Text>
-          <Text style={styles.bannerSubtitle}>
+          <Text textBreakStrategy="simple" style={styles.bannerTitle}>รายชื่อห้องแล็บ</Text>
+          <Text textBreakStrategy="simple" style={styles.bannerSubtitle}>
             เลือกห้องแล็บที่ต้องการใช้งาน
           </Text>
 
@@ -108,11 +108,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
           <View style={styles.bannerBadgesRow}>
             <View style={styles.bannerBadgeGreen}>
               <View style={styles.badgeDotGreen} />
-              <Text style={styles.badgeTextGreen}>Socket.IO Connected</Text>
+              <Text textBreakStrategy="simple" style={styles.badgeTextGreen}>Socket.IO Connected</Text>
             </View>
             <View style={styles.bannerBadgeBlue}>
               <View style={styles.badgeDotBlue} />
-              <Text style={styles.badgeTextBlue}>ผู้ใช้งาน: 1 คน</Text>
+              <Text textBreakStrategy="simple" style={styles.badgeTextBlue}>ผู้ใช้งาน: 1 คน</Text>
             </View>
           </View>
         </View>
@@ -129,6 +129,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
               onPress={() => setActiveCategory(category)}
             >
               <Text
+                textBreakStrategy="simple"
                 style={[
                   styles.filterTagText,
                   activeCategory === category && styles.filterTagTextActive,
@@ -162,27 +163,27 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
               </View>
 
               {/* Lab Title (Centered) */}
-              <Text style={styles.labTitle}>{lab.title}</Text>
+              <Text textBreakStrategy="simple" style={styles.labTitle}>{lab.title}</Text>
 
               {/* Status Badge (Centered Pill) */}
               <View style={styles.cardStatusContainer}>
                 {lab.status === 'available' ? (
                   <View style={styles.statusPillGreen}>
-                    <Text style={styles.statusPillTextGreen}>ว่าง</Text>
+                    <Text textBreakStrategy="simple" style={styles.statusPillTextGreen}>ว่าง</Text>
                   </View>
                 ) : lab.status === 'busy' ? (
                   <View style={styles.statusPillRed}>
-                    <Text style={styles.statusPillTextRed}>ไม่ว่าง</Text>
+                    <Text textBreakStrategy="simple" style={styles.statusPillTextRed}>ไม่ว่าง</Text>
                   </View>
                 ) : (
                   <View style={styles.statusPillGrey}>
-                    <Text style={styles.statusPillTextGrey}>ปิดบริการ</Text>
+                    <Text textBreakStrategy="simple" style={styles.statusPillTextGrey}>ปิดบริการ</Text>
                   </View>
                 )}
               </View>
 
               {/* Category Info (Left-aligned or centered) */}
-              <Text style={styles.categoryText}>
+              <Text textBreakStrategy="simple" style={styles.categoryText}>
                 หมวดหมู่: {lab.subject}
               </Text>
 
@@ -192,7 +193,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
                   style={styles.detailBtnFull}
                   onPress={() => setSelectedLab(lab)}
                 >
-                  <Text style={styles.detailBtnTextFull}>ดูรายละเอียด</Text>
+                  <Text textBreakStrategy="simple" style={styles.detailBtnTextFull}>ดูรายละเอียด</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -206,7 +207,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
                     navigation.navigate('MainLab', { labId: lab.id, labTitle: lab.title });
                   }}
                 >
-                  <Text style={styles.enterBtnTextFull}>เข้าห้อง</Text>
+                  <Text textBreakStrategy="simple" style={styles.enterBtnTextFull}>เข้าห้อง</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -224,22 +225,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
         <View style={styles.modalOverlay}>
           {selectedLab && (
             <View style={styles.modalCard}>
-              <Text style={[styles.modalSubject, { color: getSubjectColor(selectedLab.subject) }]}>
+              <Text textBreakStrategy="simple" style={[styles.modalSubject, { color: getSubjectColor(selectedLab.subject) }]}>
                 {selectedLab.subject} Laboratory
               </Text>
-              <Text style={styles.modalTitle}>{selectedLab.title}</Text>
-              
-              <Text style={styles.modalSectionLabel}>รายละเอียดอุปกรณ์:</Text>
-              <Text style={styles.modalDescription}>{selectedLab.description}</Text>
+              <Text textBreakStrategy="simple" style={styles.modalTitle}>{selectedLab.title}</Text>
+
+              <Text textBreakStrategy="simple" style={styles.modalSectionLabel}>รายละเอียดอุปกรณ์:</Text>
+              <Text textBreakStrategy="simple" style={styles.modalDescription}>{selectedLab.description}</Text>
 
               <View style={styles.modalStatsRow}>
                 <View style={styles.modalStatCol}>
-                  <Text style={styles.statLabel}>ระยะเวลาเฉลี่ย</Text>
-                  <Text style={styles.statValue}>{selectedLab.duration}</Text>
+                  <Text textBreakStrategy="simple" style={styles.statLabel}>ระยะเวลาเฉลี่ย</Text>
+                  <Text textBreakStrategy="simple" style={styles.statValue}>{selectedLab.duration}</Text>
                 </View>
                 <View style={styles.modalStatCol}>
-                  <Text style={styles.statLabel}>สถานะห้อง</Text>
-                  <Text style={styles.statValue}>
+                  <Text textBreakStrategy="simple" style={styles.statLabel}>สถานะห้อง</Text>
+                  <Text textBreakStrategy="simple" style={styles.statValue}>
                     {selectedLab.status === 'available' ? 'ว่างใช้งานได้' : selectedLab.status === 'busy' ? 'กำลังทำงาน' : 'ปิดซ่อมบำรุง'}
                   </Text>
                 </View>
@@ -250,7 +251,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
                   style={styles.modalCloseBtn}
                   onPress={() => setSelectedLab(null)}
                 >
-                  <Text style={styles.modalCloseText}>ปิดหน้าต่าง</Text>
+                  <Text textBreakStrategy="simple" style={styles.modalCloseText}>ปิดหน้าต่าง</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -265,7 +266,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation, ro
                     navigation.navigate('MainLab', { labId: lab.id, labTitle: lab.title });
                   }}
                 >
-                  <Text style={styles.modalEnterText}>เริ่มต้นทดลอง</Text>
+                  <Text textBreakStrategy="simple" style={styles.modalEnterText}>เริ่มต้นทดลอง</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -327,6 +328,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.xs,
     fontFamily: fonts.extraBold,
+    lineHeight: 28 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   bannerSubtitle: {
@@ -336,6 +339,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     fontFamily: fonts.regular,
     lineHeight: 20,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   bannerBadgesRow: {
@@ -457,6 +461,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.xs,
     fontFamily: fonts.bold,
+    lineHeight: 18 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   cardStatusContainer: {
@@ -503,6 +509,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     width: '100%',
     fontFamily: fonts.regular,
+    lineHeight: 12 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   actionColumn: {
@@ -525,6 +533,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     fontFamily: fonts.bold,
+    lineHeight: 13 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   enterBtnFull: {
@@ -546,6 +556,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     fontFamily: fonts.bold,
+    lineHeight: 13 * 1.45,
+    paddingVertical: 2,
     includeFontPadding: false,
   },
   modalOverlay: {
