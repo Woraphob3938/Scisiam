@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# IDE config and backup
+.idea/
+Picture/
